@@ -95,6 +95,8 @@ fill_twoHopNbrInfo() {
 	std::list<NodeInfo *>::const_iterator oneHopInfoListIter;
 	std::list<Ptr<Node> > oneHopList;
 	std::list<Ptr<Node> >::const_iterator oneHopListIter;
+	Ptr<Node> sourceNode;
+
 	int j;
 	int i;
 
@@ -112,34 +114,35 @@ fill_twoHopNbrInfo() {
 
 void
 fill_nbr_table() {
-	int i = 0;
 	std::vector<Ptr<Node> >::iterator nodeIter;
 	std::vector<std::string>::const_iterator namesIter;
 	NodeContainer nodeContainer = NodeContainer::GetGlobal();
 	std::list<TopologyReader::Link> links;
 	links = topologyReader.GetLinks();
 	std::list<TopologyReader::Link>::iterator linkiter;
-	std::string nodeName = "";
+	std::string fromName = "";
+	std::string toName = "";
+	int pos;
 
-
-	namesIter = names.begin();
-	for(nodeIter = nodeContainer.begin(); nodeIter != nodeContainer.end(); nodeIter++ ) {
-		  nbrTable[i].node = *nodeIter;
-		  for(linkiter = links.begin() ; linkiter != links.end() ; linkiter++ ) {
-				  TopologyReader::Link linkint = *linkiter;
-				  from = linkint.GetFromNode();
-				  if (from == *nodeIter) {
-					  nodeName = linkint.GetFromNodeName();
-					  to = linkint.GetToNode();
-					  std::cout << "Pri : " << linkint.GetFromNodeName() << " -> " << linkint.GetToNodeName() << "\n";
-					  nbrTable[i].oneHopList.push_back(to);
-				  }
-		  }
-		  nbrTable[i].nodeName = nodeName;
-		  nbrTable[i].prefixName = *namesIter;
-		  namesIter++;
-		  i++;
+	for(linkiter = links.begin() ; linkiter != links.end() ; linkiter++ ) {
+		from = (*linkiter).GetFromNode();
+		fromName = (*linkiter).GetFromNodeName();
+		to = (*linkiter).GetToNode();
+		toName = (*linkiter).GetToNodeName();
+		std::cout << "Pri : " << fromName << " -> " << toName << " : " << to->GetId() << "\n";
+		pos = from->GetId();
+		nbrTable[pos].node = from;
+		nbrTable[pos].nodeName = fromName;
+		nbrTable[pos].prefixName = names[pos];
+		nbrTable[pos].oneHopList.push_back(to);
+		std::cout << "Pri : " << toName << " -> " << fromName << " : " << from->GetId() << "\n";
+		pos = to->GetId();
+		nbrTable[pos].node = to;
+		nbrTable[pos].nodeName = toName;
+		nbrTable[pos].prefixName = names[pos];
+		nbrTable[pos].oneHopList.push_back(from);
 	}
+	std::cout << std::endl;
 	fill_twoHopNbrInfo();
 }
 
@@ -216,9 +219,11 @@ main (int argc, char *argv[])
 
   // Getting containers for the consumer/producer
   Ptr<Node> producer = nodeContainer.Get (PROD);
+  /*
   for (int j = 0; j < 11; j++) {
-   std::cout << "Pri : ID" << nodeContainer.Get (j)->GetId() << " Addresses of node j :" << nodeContainer.Get (j)->GetDevice(0)->GetAddress() <<  "\n";
+   std::cout << "Pri : ID" << nodeContainer.Get (j)->GetId() << " Addresses of node  :" << nodeContainer.Get (j)->GetDevice(0)->GetAddress() <<  "\n";
   }
+  */
   print_nbr_table();
   NodeContainer consumerNodes;
   consumerNodes.Add (nodeContainer.Get (CONS));

@@ -23,7 +23,8 @@ public:
 	std::list<NodeInfo *> oneHopNodeInfoList; // List of Nodeinfos of one hop nbrs.
 	std::string nodeName;    // like hostname
 	std::string prefixName;  // like ip address
-// (*oneHopNbrInfo).oneHopNbr is the list of twoHopNbrs going through that oneHopNbr
+// (*oneHopInfoList).oneHopList is the list of twoHopNbrs going through that oneHopNbr
+// note the twoHopNbr could be the source node also..so always check for that
 } ;
 
 #endif /* SCRATCH_MYNDN_H_ */

@@ -19,8 +19,8 @@ using namespace ns3;
 class NodeInfo {
 public:
 	Ptr<Node> node;
-	std::list<Ptr<Node> > oneHopNbr;
-	std::list<NodeInfo *> oneHopNbrInfo;
+	std::list<Ptr<Node> > oneHopList; //List of one hop nbrs.
+	std::list<NodeInfo *> oneHopNodeInfoList; // List of Nodeinfos of one hop nbrs.
 	std::string nodeName;    // like hostname
 	std::string prefixName;  // like ip address
 // (*oneHopNbrInfo).oneHopNbr is the list of twoHopNbrs going through that oneHopNbr

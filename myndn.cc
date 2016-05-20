@@ -89,6 +89,26 @@ fill_names() {
 		prefix.push_back(Create<ndn::Name> (*namesIter)); // another way to create name
 	}
 }
+void
+fill_twoHopNbrInfo() {
+	std::list<NodeInfo * > oneHopNodeInfoList;
+	std::list<NodeInfo *>::const_iterator oneHopInfoListIter;
+	std::list<Ptr<Node> > oneHopList;
+	std::list<Ptr<Node> >::const_iterator oneHopListIter;
+	int j;
+	int i;
+
+	for(i = 0; i != NODE_CNT; i++ ) {
+		  oneHopList = nbrTable[i].oneHopList;
+		  for(oneHopListIter = oneHopList.begin() ; oneHopListIter != oneHopList.end() ; oneHopListIter++ ) {
+			  for (j = 0; j != NODE_CNT; j++) {
+				  if (nbrTable[j].node == *oneHopListIter) {
+					  nbrTable[i].oneHopNodeInfoList.push_back(&nbrTable[j]);
+				  }
+			  }
+		  }
+	}
+}
 
 void
 fill_nbr_table() {
@@ -112,15 +132,47 @@ fill_nbr_table() {
 					  nodeName = linkint.GetFromNodeName();
 					  to = linkint.GetToNode();
 					  std::cout << "Pri : " << linkint.GetFromNodeName() << " -> " << linkint.GetToNodeName() << "\n";
-					  nbrTable[i].oneHopNbr.push_back(to);
+					  nbrTable[i].oneHopList.push_back(to);
 				  }
 		  }
 		  nbrTable[i].nodeName = nodeName;
 		  nbrTable[i].prefixName = *namesIter;
 		  namesIter++;
 		  i++;
+	}
+	fill_twoHopNbrInfo();
 }
+
+void
+print_nbr_table() {
+	std::list<NodeInfo * > oneHopNodeInfoList;
+	std::list<NodeInfo *>::const_iterator oneHopInfoListIter;
+	std::list<Ptr<Node> > oneHopList;
+	std::list<Ptr<Node> >::const_iterator oneHopListIter;
+	std::list<NodeInfo *> twoHopList;
+	std::list<NodeInfo *>::const_iterator twoHopListIter;
+	Ptr<Node> oneHopNbr;
+	Ptr<Node> twoHopNbr;
+	std::string sourceName;
+	std::string oneHopNbrName;
+	std::string twoHopNbrName;
+	int i;
+
+	for(i = 0; i != NODE_CNT; i++ ) {
+		sourceName = nbrTable[i].nodeName;
+		oneHopNodeInfoList = nbrTable[i].oneHopNodeInfoList;
+		for(oneHopInfoListIter = oneHopNodeInfoList.begin() ; oneHopInfoListIter != oneHopNodeInfoList.end() ; oneHopInfoListIter++ ) {
+			oneHopNbr = (*oneHopInfoListIter)->node;
+			oneHopNbrName = (*oneHopInfoListIter)->nodeName;
+			twoHopList = (*oneHopInfoListIter)->oneHopNodeInfoList;
+			for (twoHopListIter = twoHopList.begin(); twoHopListIter != twoHopList.end(); twoHopListIter++) {
+				twoHopNbrName = (*twoHopListIter)->nodeName;
+				std::cout << "Pri " << sourceName << " -> " <<oneHopNbrName << " -> " << twoHopNbrName <<"\n";
+			}
+		}
+	}
 }
+
 
 int
 main (int argc, char *argv[])
@@ -141,61 +193,11 @@ main (int argc, char *argv[])
 
   topologyReader.SetFileName("scratch/paper_topo.txt");
   topologyReader.Read();
+
+  fill_nbr_table();
   /*
-  std::list<NodeInfo * > oneHopInfo;
-  std::list<NodeInfo *>::const_iterator oneHopInfoIter;
-  std::list<Ptr<Node> > twoHopNbr;
-  std::list<Ptr<Node> >::const_iterator twoHopNbrIter;
-  int j;
 
-  for(i = 0; i != NODE_CNT; i++ ) {
-	  oneHopInfo = nbrTable[i].oneHopNbrInfo;
-	  for(oneHopInfoIter = oneHopInfo.begin() ; oneHopInfoIter != oneHopInfo.end() ; oneHopInfoIter++ ) {
-		  //twoHopNbr = *oneHopInfoIter.oneHopNbr;
-
-	  }
-  }
-
-  std::list<NodeInfo *>::const_iterator nbrTableIter;
-
-  for(i = 0; i != NODE_CNT; i++ ) {
-  	  oneHopNbrList = nbrTable[i].oneHopNbrInfo;
-  	  for(nbrTableIter = oneHopNbr.begin() ; nbr1Iter != oneHopNbr.end() ; nbr1Iter++ ) {
-  		  twoHopNbr = nbrTableIter;
-  		  for (nbr = 0; j != NODE_CNT; j++) {
-  			  if (nbrTable[j] == nbr1Iter) {
-  				  nbrTable[i].oneHopNbrInfo = nbrTable[j];
-  			  }
-  	  	  }
-  	  }
-    }
-
-  std::string fromname;
-  std::string firstnbrname;
-  std::string secondnbrname;
-  std::list<Ptr<Node> > oneHopNbr;
-
-  std::list<Ptr<Node> > twoHopNbr;
-
-  std::list<Ptr<Node> >::const_iterator nbr1Iter;
-  std::list<Ptr<Node> >::const_iterator nbr2Iter;
-
-   i = 0;
-  namesIter = names.begin();
-  for(nbrIter = nodeContainer.begin(); nbrIter != nodeContainer.end(); nbrIter++ ) {
-	  fromname = nbrIter->nodeName;
-	  oneHopNbr = nbrIter->oneHopNbr;
-	  for(nbr1Iter = oneHopNbr.begin(); nbr1Iter != oneHopNbr.end(); nbr1Iter++) {
-		  twoHopNbr = nbr1Iter;
-		  for(nbr2Iter = oneHopNbr.begin(); nbr1Iter != oneHopNbr.end(); nbr1Iter++) {
-		  	  }
-	  }
-	  nbrTable[i].prefixName = *namesIter;
-	  namesIter++;
-	  i++;
-  }
-
-  //nodes.Create (names.size());
+    //nodes.Create (names.size());
 
 */
 
@@ -217,7 +219,7 @@ main (int argc, char *argv[])
   for (int j = 0; j < 11; j++) {
    std::cout << "Pri : ID" << nodeContainer.Get (j)->GetId() << " Addresses of node j :" << nodeContainer.Get (j)->GetDevice(0)->GetAddress() <<  "\n";
   }
-
+  print_nbr_table();
   NodeContainer consumerNodes;
   consumerNodes.Add (nodeContainer.Get (CONS));
 

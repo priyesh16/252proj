@@ -1,0 +1,66 @@
+# topo-6-node.txt
+
+#   /------\	                                                /------\
+#   | Src1 |<--+                                            +-->| Dst1 |
+#   \------/    \                                          /    \------/
+#            	 \                                        /     
+#                 +-->/------\   "bottleneck"  /------\<-+      
+#                     | Rtr1 |<===============>| Rtr2 |         
+#                 +-->\------/                 \------/<-+      
+#                /                                        \
+#   /------\    /                                          \    /------\
+#   | Src2 |<--+                                            +-->| Dst2 |
+#   \------/                                                    \------/
+
+router
+
+#name   city    latitude  longitude
+a      NA       50        30 #0
+b      NA    	20        20 #1
+c      NA    	25        60 #2
+d      NA    	70        70 #3
+e      NA    	50        20 #4
+f      NA    	10        25 #5
+g      NA    	10        10 #6
+h      NA    	5         20 #7 - CONS
+i      NA    	10        40 #8
+j      NA    	15        90 #9
+k      NA    	30        80 #10
+l      NA    	0         0  #11
+m      NA    	82        60 #12
+n      NA    	60        30 #13
+o      NA    	5         80 #14
+p      NA    	80        80 #15
+q      NA    	25        115 #16 - PROD
+r      NA    	10        100 #17
+s      NA    	100       100 #18
+
+
+link
+
+# srcNode   nbr1Node     bandwidth   metric  delay   queue nbr2node
+a        b        10Mbps      1        10ms    20	
+a        c        10Mbps      1        10ms    20
+a        d        10Mbps      1        10ms    20
+a        e        10Mbps      1        10ms    20
+b        f        10Mbps      1        10ms    20
+b        g        10Mbps      1        10ms    20
+b        h        10Mbps      1        10ms    20
+c        i        10Mbps      1        10ms    20
+c        j        10Mbps      1        10ms    20
+c        k        10Mbps      1        10ms    20
+d        k        10Mbps      1        10ms    20
+d        p        10Mbps      1        10ms    20
+d        m        10Mbps      1        10ms    20
+d        n        10Mbps      1        10ms    20
+e        n        10Mbps      1        10ms    20
+e        o        10Mbps      1        10ms    20
+f        i        10Mbps      1        10ms    20
+i        j        10Mbps      1        10ms    20
+i        f        10Mbps      1        10ms    20
+j        k        10Mbps      1        10ms    20
+m        p        10Mbps      1        10ms    20
+m        q        10Mbps      1        10ms    20
+n        r        10Mbps      1        10ms    20
+p        s        10Mbps      1        10ms    20
+q        r        10Mbps      1        10ms    20

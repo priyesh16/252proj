@@ -23,9 +23,17 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/point-to-point-layout-module.h"
 #include "ns3/ndnSIM-module.h"
+#include "../src/ndnSIM/utils/trie/trie.h"
+#include "../src/ndnSIM/utils/trie/trie-with-policy.h"
+#include "../src/ndnSIM/utils/trie/counting-policy.h"
 #include "myndn.h"
+#include "../src/ndnSIM/ndn.cxx/detail/pending-interests-container.h"
+#include "../src/ndnSIM/ndn.cxx/detail/registered-prefix-container.h"
 
+
+using namespace std;
 using namespace ns3;
+using namespace ndn;
 
 /**
  * This scenario simulates a very simple network topology:
@@ -61,34 +69,80 @@ ns3::AnnotatedTopologyReader topologyReader("", 1);
 std::vector<NodeInfo> nbrTable(NODE_CNT);
 //NodeContainer nodeContainer;
 
+class Integer : public ns3::SimpleRefCount<Integer>
+ {
+ private:
+   int value_;
+ public:
+   Integer (int value) {this->value_ = value;}
+
+   operator int () const { return value_; }
+ };
+
+ std::ostream &
+ operator << (std::ostream &os, const ::Integer &i)
+ {
+   os << (int)i;
+   return os;
+ }
+
+ /*
+typedef ndn::ndnSIM::trie_with_policy <
+    ndn::Name,
+    ndn::ndnSIM::smart_pointer_payload_traits<ndn::Name>,
+	ndn::ndnSIM::counting_policy_traits
+    > trietemp;
+*/
+ndn::ndnSIM::trie_with_policy< ndn::Name,
+					ndn::ndnSIM::smart_pointer_payload_traits<ndn::detail::RegisteredPrefixEntry>,
+					ndn::ndnSIM::counting_policy_traits> prefixTrie;
+
+typedef ndn::ndnSIM::trie_with_policy< Name,
+                                    ndnSIM::smart_pointer_payload_traits<ndn::detail::RegisteredPrefixEntry>,
+                                    ndnSIM::counting_policy_traits > super;
+
+
+std::string prefixNamesArr[] = {
+		"/0/2/1",		//a
+		"/0/1/1/1", 	//b
+		"/0/2",			//c
+		"/0/3/1",		//d
+		"/0/2/1/1",		//e
+		"/0/1/1",		//f
+		"/0/1/1/1/1",	//g
+		"/0/1/1/1/2",	//h
+		"/0/1",			//i
+		"/0",			//j
+		"/0/3",			//k
+		"/0/20/1",		//l
+		"/0/3/1/1",		//m
+		"/0/2/1/1/2",	//n
+		"/0/2/1/1/1",	//o
+		"/0/3/1/2",		//p
+		"/0/3/1/1/1",	//q
+		"/0/2/1/1/2/1",	//r
+		"/0/3/1/2/1" // s
+};
+
 void
 fill_names() {
 	std::vector<std::string>::const_iterator namesIter;
 	std::vector<Ptr<ndn::Name> > prefix;
+	int i = 0;
 
-	names.push_back("/0/2/1"); // a
-	names.push_back("/0/1/1/1"); // b
-	names.push_back("/0/2"); // c
-	names.push_back("/0/3/1"); // d
-	names.push_back("/0/2/1/1"); // e
-	names.push_back("/0/1/1"); // f
-	names.push_back("/0/1/1/1/1"); // g
-	names.push_back("/0/1/1/1/2"); // h
-	names.push_back("/0/1"); // i
-	names.push_back("/0"); // j
-	names.push_back("/0/3"); // k
-	names.push_back("/0/20/1"); // l
-	names.push_back("/0/3/1/1"); // m
-	names.push_back("/0/2/1/1/2"); // n
-	names.push_back("/0/2/1/1/1"); // o
-	names.push_back("/0/3/1/2"); // p
-	names.push_back("/0/3/1/1/1"); // q
-	names.push_back("/0/2/1/1/2/1"); // r
-	names.push_back("/0/3/1/2/1"); // s
-	for(namesIter = names.begin(); namesIter != names.end(); namesIter++){
-		prefix.push_back(Create<ndn::Name> (*namesIter)); // another way to create name
+	for (i = 0; i < NODE_CNT; i++) {
+		//prefixNames[i](prefixNamesArr[i]);
+		prefix.push_back(Create<ndn::Name> (prefixNamesArr[i])); // another way to create name
+		names.push_back(prefixNamesArr[i]);
+		prefixTrie.insert(*(prefix[i]), Create < ndn::detail::RegisteredPrefixEntry > (prefix[i]));
 	}
+	super::iterator item = prefixTrie.find_exact(*(prefix[4]));
+	cout << "Prefix found" << *((item->payload ())->GetPrefix()) << endl;
+	ndn::Name n1("/0/2/1/1/3");
+	item = prefixTrie.longest_prefix_match(n1);
+	cout << "Longest Prefix found" << *((item->payload ())->GetPrefix()) << endl;
 }
+
 void
 fill_twoHopNbrInfo() {
 	std::list<NodeInfo * > oneHopNodeInfoList;
@@ -156,13 +210,16 @@ print_nbr_table() {
 	std::list<NodeInfo *>::const_iterator twoHopListIter;
 	Ptr<Node> oneHopNbr;
 	Ptr<Node> twoHopNbr;
+	std::string prefixName;
 	std::string sourceName;
 	std::string oneHopNbrName;
 	std::string twoHopNbrName;
 	int i;
 
+
 	for(i = 0; i != NODE_CNT; i++ ) {
 		sourceName = nbrTable[i].nodeName;
+		prefixName = nbrTable[i].prefixName;
 		oneHopNodeInfoList = nbrTable[i].oneHopNodeInfoList;
 		for(oneHopInfoListIter = oneHopNodeInfoList.begin() ; oneHopInfoListIter != oneHopNodeInfoList.end() ; oneHopInfoListIter++ ) {
 			oneHopNbr = (*oneHopInfoListIter)->node;
@@ -170,11 +227,93 @@ print_nbr_table() {
 			twoHopList = (*oneHopInfoListIter)->oneHopNodeInfoList;
 			for (twoHopListIter = twoHopList.begin(); twoHopListIter != twoHopList.end(); twoHopListIter++) {
 				twoHopNbrName = (*twoHopListIter)->nodeName;
-				std::cout << "Pri " << sourceName << " -> " <<oneHopNbrName << " -> " << twoHopNbrName <<"\n";
+				std::cout << "Pri " << sourceName << " " << prefixName << " -> " <<oneHopNbrName << " -> " << twoHopNbrName <<"\n";
 			}
 		}
 	}
 }
+
+void
+calculate_next_hops(void) {
+	std::list<NodeInfo * > oneHopNodeInfoList;
+	std::list<NodeInfo *>::const_iterator oneHopInfoListIter;
+	std::list<Ptr<Node> > oneHopList;
+	std::list<Ptr<Node> >::const_iterator oneHopListIter;
+	std::list<NodeInfo *> twoHopList;
+	std::list<NodeInfo *>::const_iterator twoHopListIter;
+	Ptr<Node> oneHopNbr;
+	Ptr<Node> twoHopNbr;
+	std::string prefixName;
+	std::string sourceName;
+	std::string oneHopNbrName;
+	std::string twoHopNbrName;
+	int i;
+
+
+	for(i = 0; i != NODE_CNT; i++ ) {
+		sourceName = nbrTable[i].nodeName;
+		prefixName = nbrTable[i].prefixName;
+		oneHopNodeInfoList = nbrTable[i].oneHopNodeInfoList;
+		for(oneHopInfoListIter = oneHopNodeInfoList.begin() ; oneHopInfoListIter != oneHopNodeInfoList.end() ; oneHopInfoListIter++ ) {
+			oneHopNbr = (*oneHopInfoListIter)->node;
+			oneHopNbrName = (*oneHopInfoListIter)->nodeName;
+			twoHopList = (*oneHopInfoListIter)->oneHopNodeInfoList;
+			for (twoHopListIter = twoHopList.begin(); twoHopListIter != twoHopList.end(); twoHopListIter++) {
+				twoHopNbrName = (*twoHopListIter)->nodeName;
+				std::cout << "Pri " << sourceName << " " << prefixName << " -> " <<oneHopNbrName << " -> " << twoHopNbrName <<"\n";
+
+			}
+		}
+	}
+}
+
+
+/*
+void
+CalculateRoutes () {
+	std::vector<Ptr<Node> >::iterator nodeIter;
+	std::vector<std::string>::const_iterator namesIter;
+	NodeContainer nodeContainer = NodeContainer::GetGlobal();
+	std::list<TopologyReader::Link> links;
+	links = topologyReader.GetLinks();
+	std::list<TopologyReader::Link>::iterator linkiter;
+	std::string fromName = "";
+	std::string toName = "";
+	int pos;
+	Ptr<ndn::L3Protocol> ndnFromProt;
+	Ptr<ndn::Face> fromFace;
+	Ptr<ndn::L3Protocol> ndnToProt;
+	Ptr<ndn::Face> toFace;
+
+	for(linkiter = links.begin() ; linkiter != links.end() ; linkiter++ ) {
+		ndnFromProt = (*linkiter).GetFromNode ()->GetObject<ndn::L3Protocol> ();
+		if (ndnFromProt != 0)
+	        fromFace = ndnFromProt->GetFaceByNetDevice ((*linkiter).GetFromNetDevice ());
+		ndnToProt = (*linkiter).GetToNode ()->GetObject<ndn::L3Protocol> ();
+		if (ndnToProt != 0)
+	        toFace = ndnToProt->GetFaceByNetDevice ((*linkiter).GetToNetDevice ());
+
+
+
+	for (NodeList::Iterator node = NodeList::Begin (); node != NodeList::End (); node++) {
+		Ptr<GlobalRouter> source = (*node)->GetObject<GlobalRouter> ();
+		if (source == 0)
+			continue;
+
+			Ptr<ndn::Fib>  fib  = source->GetObject<ndn::Fib> ();
+			NS_LOG_DEBUG (" prefix " << prefix << " reachable via face " << *i->second.get<0> ()
+            << " with distance " << i->second.get<1> ()
+            << " with delay " << i->second.get<2> ());
+			Ptr<ndn::fib::Entry> entry = fib->Add (prefix, i->second.get<0> (), i->second.get<1> ());
+			entry->SetRealDelayToProducer (i->second.get<0> (), Seconds (i->second.get<2> ()));
+			Ptr<Limits> faceLimits = i->second.get<0> ()->GetObject<Limits> ();
+			Ptr<Limits> fibLimits = entry->GetObject<Limits> ();
+			if (fibLimits != 0)
+				fibLimits->SetLimits (faceLimits->GetMaxRate (), 2 * i->second.get<2> () );
+		}
+	}
+}
+	*/
 
 
 int
@@ -198,12 +337,6 @@ main (int argc, char *argv[])
   topologyReader.Read();
 
   fill_nbr_table();
-  /*
-
-    //nodes.Create (names.size());
-
-*/
-
 
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
@@ -219,12 +352,7 @@ main (int argc, char *argv[])
 
   // Getting containers for the consumer/producer
   Ptr<Node> producer = nodeContainer.Get (PROD);
-  /*
-  for (int j = 0; j < 11; j++) {
-   std::cout << "Pri : ID" << nodeContainer.Get (j)->GetId() << " Addresses of node  :" << nodeContainer.Get (j)->GetDevice(0)->GetAddress() <<  "\n";
-  }
-  */
-  print_nbr_table();
+  //print_nbr_table();
   NodeContainer consumerNodes;
   consumerNodes.Add (nodeContainer.Get (CONS));
 
@@ -242,8 +370,19 @@ main (int argc, char *argv[])
   ndnGlobalRoutingHelper.AddOrigins (prefixstr, producer);
 
   // Calculate and install FIBs
- ndn::GlobalRoutingHelper::CalculateRoutes ();
+  ndn::GlobalRoutingHelper::CalculateRoutes ();
+  ndn::L3Protocol::FaceList m_faces;
+  /*
+  int id;
+  std::cout << "face size" << m_faces.size() << "\n";
+  ndn::Fib::
 
+  for (int j = 0; j < 1; j++) {
+	 id = faceList[j]->GetNode()->GetId();
+	 std::cout << "id" << id << "\n";
+     //std::cout << "Pri : FaceList" << nbrTable[id].nodeName << "\n";
+  }
+*/
   Simulator::Stop (Seconds (2.0));
   ndn::AppDelayTracer::InstallAll("outfile.txt");
   Simulator::Run ();

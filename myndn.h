@@ -22,7 +22,9 @@ public:
 	std::list<Ptr<Node> > oneHopList; //List of one hop nbrs.
 	std::list<NodeInfo *> oneHopNodeInfoList; // List of Nodeinfos of one hop nbrs.
 	std::string nodeName;    // like hostname
-	std::string prefixName;  // like ip address
+	std::string prefixName;
+	Ptr<Node> nextHopNode; //Next node to route to (This is to be deleted and directly added to fib)
+	// like ip address
 // (*oneHopInfoList).oneHopList is the list of twoHopNbrs going through that oneHopNbr
 // note the twoHopNbr could be the source node also..so always check for that
 } ;

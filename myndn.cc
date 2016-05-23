@@ -218,17 +218,27 @@ CalculateRoutes () {
 		}
 	}
 }
-	*/
 
+void
+print_name(void)
+Name::const_iterator i = (*twoHopListIter1)->prefixName->begin ();
+							  Name::const_iterator j = foundPrefStr.begin ();
+							  for (; i != (*twoHopListIter1)->prefixName->end () && j != foundPrefStr.end (); i++, j++) {
+								 cout << "prefixes " << *i << "\t " << *j << "\n";
+							  }
+
+*/
 void
 fill_nbrTableTrie() {
 	std::list<NodeInfo * > oneHopNodeInfoList;
+	std::list<NodeInfo * > oneHopNodeInfoList1;
 	std::list<NodeInfo *>::const_iterator oneHopInfoListIter;
 	std::list<NodeInfo *>::const_iterator oneHopInfoListIter1;
 	std::list<Ptr<Node> > oneHopList;
 	std::list<NodeInfo *>::reverse_iterator reviter;
 	std::list<Ptr<Node> >::const_iterator oneHopListIter;
 	std::list<NodeInfo *> twoHopList;
+	std::list<NodeInfo *> twoHopList1;
 	std::list<NodeInfo *>::const_iterator twoHopListIter;
 	std::list<NodeInfo *>::const_iterator twoHopListIter1;
 	Ptr<Node> oneHopNbr;
@@ -279,7 +289,7 @@ fill_nbrTableTrie() {
 			twoHopList = (*oneHopInfoListIter)->oneHopNodeInfoList;
 			// If one hop nbr is the dest then break
 			if(oneHopNbrPrefix == destPrefix) {
-				cout << "Next hop " << oneHopNbrName << " is the dest \n";
+				cout << "\tNext hop " << oneHopNbrName << " is the dest \n";
 				found = 1;
 				nextHop = oneHopNbr;
 				break;
@@ -290,7 +300,7 @@ fill_nbrTableTrie() {
 				twoHopNbrStr = (*twoHopListIter)->nodeName;
 				// If two hop nbr is the source then continue
 				if(prefixStr == twoHopNbrPreStr) {
-					cout << "The two hop nbr " << twoHopNbrStr << " and the source are the same \n";
+					cout << "\t\tThe two hop nbr " << twoHopNbrStr << " and the source are the same \n";
 					continue;
 				}
 				cout << "\t\t" << "2HopNbr " << twoHopNbrStr << " : " << twoHopNbrPreStr << "\n";
@@ -303,10 +313,19 @@ fill_nbrTableTrie() {
 			if (item != 0) {
 				foundPrefStr = *((item->payload ())->GetPrefix());
 				cout << "Longest Prefix found" << foundPrefStr << endl;
-			}
-			for(oneHopInfoListIter1 = oneHopNodeInfoList.begin() ; oneHopInfoListIter1 != oneHopNodeInfoList.end() ; oneHopInfoListIter1++ ) {
-				for (twoHopListIter1 = twoHopList.begin(); twoHopListIter1 != twoHopList.end(); twoHopListIter1++) {
-
+				oneHopNodeInfoList1 = nbrTable[i].oneHopNodeInfoList;
+				for(oneHopInfoListIter1 = oneHopNodeInfoList1.begin() ; oneHopInfoListIter1 != oneHopNodeInfoList1.end() ; oneHopInfoListIter1++ ) {
+					twoHopList1 = (*oneHopInfoListIter1)->oneHopNodeInfoList;
+					for (twoHopListIter1 = twoHopList1.begin(); twoHopListIter1 != twoHopList1.end(); twoHopListIter1++) {
+						if ((*twoHopListIter1)->prefixName->compare(foundPrefStr) == 0) {
+								cout << "Nbr is " << (*oneHopInfoListIter1)->nodeName << endl;
+								nextHop = (*oneHopInfoListIter1)->node;
+								found = 1;
+								break;
+						}
+					}
+					if (found == 1)
+						break;
 				}
 			}
 		}

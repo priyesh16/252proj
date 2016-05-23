@@ -218,16 +218,17 @@ CalculateRoutes () {
 		}
 	}
 }
-
-void
-print_name(void)
-Name::const_iterator i = (*twoHopListIter1)->prefixName->begin ();
-							  Name::const_iterator j = foundPrefStr.begin ();
-							  for (; i != (*twoHopListIter1)->prefixName->end () && j != foundPrefStr.end (); i++, j++) {
-								 cout << "prefixes " << *i << "\t " << *j << "\n";
-							  }
-
 */
+void
+print_name(ndn::Name &namePrefix) {
+	ndn::Name::const_iterator i;
+	for (i = namePrefix.begin(); i != namePrefix.end(); i++) {
+		cout << "/" << *i;
+	}
+	cout<< "\n";
+}
+
+
 void
 fill_nbrTableTrie() {
 	std::list<NodeInfo * > oneHopNodeInfoList;
@@ -259,12 +260,14 @@ fill_nbrTableTrie() {
 	Ptr<ndn::Name> destPrefixName = nbrTable[DEST].prefixName;
 	Ptr<Node> nextHop;
 	int found = 0;
+	Ptr<ndn::Name> srcPrefixName;
 	cout<< "Prefix " << destPrefix << endl;
 
 
 	for(i = 0; i != NODE_CNT; i++ ) {
 		found = 0;
 		sourceName = nbrTable[i].nodeName;
+		srcPrefixName = nbrTable[i].prefixName;
 		prefixStr = nbrTable[i].prefixStr;
 		cout << "Sourcename " << sourceName << "\n";
 
@@ -274,6 +277,7 @@ fill_nbrTableTrie() {
 			cout << "Current node " << sourceName << " is the dest \n";
 			found = 1;
 			nextHop = 0;
+			nbrTable[i].nextHopNode = nbrTable[i].node;
 			continue;
 		}
 
@@ -292,6 +296,7 @@ fill_nbrTableTrie() {
 				cout << "\tNext hop " << oneHopNbrName << " is the dest \n";
 				found = 1;
 				nextHop = oneHopNbr;
+				nbrTable[i].nextHopNode = oneHopNbr;
 				break;
 			}
 			for (twoHopListIter = twoHopList.begin(); twoHopListIter != twoHopList.end(); twoHopListIter++) {
@@ -310,7 +315,14 @@ fill_nbrTableTrie() {
 		}
 		if (found != 1) {
 			item = (tmpTrie).longest_prefix_match(*(destPrefixName));
-			if (item != 0) {
+			// If no prefix match with destination then parent node is the nbr
+			if (item == 0) {
+				cout << "The original prefix" << srcPrefixName <<"\t" << i;
+				//print_name(*srcPrefixName);
+				item = (tmpTrie).longest_prefix_match(*srcPrefixName);
+			}
+			// if item is still 0 then ideally assert
+			//if (item != 0) {
 				foundPrefStr = *((item->payload ())->GetPrefix());
 				cout << "Longest Prefix found" << foundPrefStr << endl;
 				oneHopNodeInfoList1 = nbrTable[i].oneHopNodeInfoList;
@@ -319,7 +331,7 @@ fill_nbrTableTrie() {
 					for (twoHopListIter1 = twoHopList1.begin(); twoHopListIter1 != twoHopList1.end(); twoHopListIter1++) {
 						if ((*twoHopListIter1)->prefixName->compare(foundPrefStr) == 0) {
 								cout << "Nbr is " << (*oneHopInfoListIter1)->nodeName << endl;
-								nextHop = (*oneHopInfoListIter1)->node;
+								nbrTable[i].nextHopNode = (*oneHopInfoListIter1)->node;
 								found = 1;
 								break;
 						}
@@ -327,7 +339,7 @@ fill_nbrTableTrie() {
 					if (found == 1)
 						break;
 				}
-			}
+			//}
 		}
 		cout << "\n-------------------------------------------------\n";
 	}

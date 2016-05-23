@@ -230,7 +230,7 @@ print_name(ndn::Name &namePrefix) {
 
 
 void
-fill_nbrTableTrie() {
+fill_next_hops() {
 	std::list<NodeInfo * > oneHopNodeInfoList;
 	std::list<NodeInfo * > oneHopNodeInfoList1;
 	std::list<NodeInfo *>::const_iterator oneHopInfoListIter;
@@ -344,9 +344,9 @@ fill_nbrTableTrie() {
 		cout << "\n-------------------------------------------------\n";
 	}
 }
-
+/*
 void
-calculate_next_hops(void) {
+push_fib_entries(void) {
 	std::list<NodeInfo * > oneHopNodeInfoList;
 	std::list<NodeInfo *>::const_iterator oneHopInfoListIter;
 	std::list<Ptr<Node> > oneHopList;
@@ -362,11 +362,6 @@ calculate_next_hops(void) {
 	Ptr<ndn::Name> dstPrefixName;
 	std::string dstPrefixStr;
 	int i;
-	super::iterator item;
-	//ndn::ndnSIM::trie_with_policy< ndn::Name,
-	//									ndn::ndnSIM::smart_pointer_payload_traits<ndn::detail::RegisteredPrefixEntry>,
-	//									ndn::ndnSIM::counting_policy_traits > nbrTrie;
-
 
 	for(i = 0; i < NODE_CNT; i++ ) {
 		sourceName = nbrTable[i].nodeName;
@@ -388,15 +383,113 @@ calculate_next_hops(void) {
 		}
 	}
 }
+void
+add_fib_entries () {
 
+	std::vector<Ptr<Node> >::iterator nodeIter;
+	std::vector<std::string>::const_iterator namesIter;
+	NodeContainer nodeContainer = NodeContainer::GetGlobal();
+	std::list<TopologyReader::Link> links;
+	links = topologyReader.GetLinks();
+	std::list<TopologyReader::Link>::iterator linkiter;
+	std::string fromName = "";
+	std::string toName = "";
+	int pos;
+	Ptr<ndn::L3Protocol> ndnFromProt;
+	Ptr<ndn::Face> fromFace;
+	Ptr<ndn::L3Protocol> ndnToProt;
+	Ptr<ndn::Face> toFace;
+	Ptr<Node> sourceNode;
+
+	for(linkiter = links.begin() ; linkiter != links.end() ; linkiter++ ) {
+		ndnFromProt = (*linkiter).GetFromNode ()->GetObject<ndn::L3Protocol> ();
+		if (ndnFromProt != 0)
+	        fromFace = ndnFromProt->GetFaceByNetDevice ((*linkiter).GetFromNetDevice ());
+		ndnToProt = (*linkiter).GetToNode ()->GetObject<ndn::L3Protocol> ();
+		if (ndnToProt != 0)
+	        toFace = ndnToProt->GetFaceByNetDevice ((*linkiter).GetToNetDevice ());
+
+	for (NodeList::Iterator node = NodeList::Begin (); node != NodeList::End (); node++) {
+		Ptr<GlobalRouter> source = (*node)->GetObject<GlobalRouter> ();
+		if (source == 0)
+			continue;
+
+			Ptr<ndn::Fib>  fib  = source->GetObject<ndn::Fib> ();
+			NS_LOG_DEBUG (" prefix " << prefix << " reachable via face " << *i->second.get<0> ()
+            << " with distance " << i->second.get<1> ()
+            << " with delay " << i->second.get<2> ());
+			Ptr<ndn::fib::Entry> entry = fib->Add (prefix, i->second.get<0> (), i->second.get<1> ());
+			entry->SetRealDelayToProducer (i->second.get<0> (), Seconds (i->second.get<2> ()));
+			Ptr<Limits> faceLimits = i->second.get<0> ()->GetObject<Limits> ();
+			Ptr<Limits> fibLimits = entry->GetObject<Limits> ();
+			if (fibLimits != 0)
+				fibLimits->SetLimits (faceLimits->GetMaxRate (), 2 * i->second.get<2> () );
+		}
+	}
+}
+*/
+void
+add_fib_entries (void) {
+	int i;
+	int j;
+	Ptr<ndn::L3Protocol> ndnProt;
+	Ptr<ndn::Face> nextFace = 0;
+	std::list<TopologyReader::Link> links;
+	links = topologyReader.GetLinks();
+	std::list<TopologyReader::Link>::iterator linkiter;
+	Ptr<Node> srcNode;
+	Ptr<Node> nextHopNode;
+
+
+	std::string fromName;
+	std::string toName;
+	std::string nextHopName;
+	std::string srcName;
+	Ptr<ndn::GlobalRouter> source;
+
+	for (i = 0; i < NODE_CNT; i++) {
+
+		srcNode = nbrTable[i].node;
+		srcName = nbrTable[i].nodeName;
+		nextHopNode = nbrTable[i].nextHopNode;
+		for (j = 0; j < NODE_CNT; j++) {
+			if (nextHopNode == nbrTable[j].node) {
+				nextHopName = nbrTable[j].nodeName;
+				break;
+			}
+		}
+		source = srcNode->GetObject<ndn::GlobalRouter> ();
+			if (source == 0)
+				continue;
+
+
+		ndnProt = srcNode->GetObject<ndn::L3Protocol> ();
+
+		// Find Face
+		for(linkiter = links.begin() ; linkiter != links.end() ; linkiter++ ) {
+			fromName = (*linkiter).GetFromNodeName();
+			toName = (*linkiter).GetToNodeName();
+			if (fromName == srcName && toName == nextHopName) {
+				nextFace = ndnProt->GetFaceByNetDevice ((*linkiter).GetToNetDevice ());
+				break;
+			}
+			if (toName == srcName && fromName == nextHopName) {
+				nextFace = ndnProt->GetFaceByNetDevice ((*linkiter).GetFromNetDevice ());
+				break;
+			}
+		}
+
+		// Add Fib Entry
+		Ptr<ndn::Fib>  fib  = source->GetObject<ndn::Fib> ();
+		if (nextFace != 0)
+			Ptr<ndn::fib::Entry> entry = fib->Add (interestPrefixstr, nextFace, 1);
+	}
+}
 
 
 int
 main (int argc, char *argv[])
 {
-  std::string prefixstr = "/prefix";
-
-
   // Setting default parameters for PointToPoint links and channels
   Config::SetDefault ("ns3::PointToPointNetDevice::DataRate", StringValue ("1Mbps"));
   Config::SetDefault ("ns3::PointToPointChannel::Delay", StringValue ("10ms"));
@@ -432,23 +525,24 @@ main (int argc, char *argv[])
   consumerNodes.Add (nodeContainer.Get (CONS));
 
   ndn::AppHelper consumerHelper ("ns3::ndn::ConsumerCbr");
-  consumerHelper.SetPrefix (prefixstr);
+  consumerHelper.SetPrefix (interestPrefixstr);
   consumerHelper.SetAttribute ("Frequency", StringValue ("1")); // 10 interests a second
   consumerHelper.Install (consumerNodes);
 
   ndn::AppHelper producerHelper ("ns3::ndn::Producer");
-  producerHelper.SetPrefix (prefixstr);
+  producerHelper.SetPrefix (interestPrefixstr);
   producerHelper.SetAttribute ("PayloadSize", StringValue("1024"));
   producerHelper.Install (producer);
 
-  fill_nbrTableTrie();
+  fill_next_hops();
   //calculate_next_hops();
 
   // Add /prefix origins to ndn::GlobalRouter
-  ndnGlobalRoutingHelper.AddOrigins (prefixstr, producer);
+  ndnGlobalRoutingHelper.AddOrigins (interestPrefixstr, producer);
 
   // Calculate and install FIBs
-  ndn::GlobalRoutingHelper::CalculateRoutes ();
+  add_fib_entries();
+  //ndn::GlobalRoutingHelper::CalculateRoutes ();
   ndn::L3Protocol::FaceList m_faces;
   /*
   int id;

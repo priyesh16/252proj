@@ -23,8 +23,9 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/point-to-point-layout-module.h"
 #include "ns3/ndnSIM-module.h"
-
-
+#include "../src/ndnSIM/helper/ndn-global-routing-helper.h"
+#include "../src/ndnSIM/model/ndn-net-device-face.h"
+#include "../src/ndnSIM/model/ndn-global-router.h"
 using namespace std;
 using namespace ns3;
 using namespace ndn;
@@ -38,6 +39,7 @@ typedef ndn::ndnSIM::trie_with_policy< Name,
                                     ndnSIM::smart_pointer_payload_traits<ndn::detail::RegisteredPrefixEntry>,
                                     ndnSIM::counting_policy_traits > super;
 
+std::string interestPrefixstr = "/prefix";
 
 class NodeInfo {
 public:

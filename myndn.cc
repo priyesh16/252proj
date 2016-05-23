@@ -18,22 +18,9 @@
  * Author: Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 // ndn-simple.cc
-#include "ns3/core-module.h"
-#include "ns3/network-module.h"
-#include "ns3/point-to-point-module.h"
-#include "ns3/point-to-point-layout-module.h"
-#include "ns3/ndnSIM-module.h"
-#include "../src/ndnSIM/utils/trie/trie.h"
-#include "../src/ndnSIM/utils/trie/trie-with-policy.h"
-#include "../src/ndnSIM/utils/trie/counting-policy.h"
+
 #include "myndn.h"
-#include "../src/ndnSIM/ndn.cxx/detail/pending-interests-container.h"
-#include "../src/ndnSIM/ndn.cxx/detail/registered-prefix-container.h"
 
-
-using namespace std;
-using namespace ns3;
-using namespace ndn;
 
 /**
  * This scenario simulates a very simple network topology:
@@ -56,9 +43,6 @@ using namespace ndn;
  */
 
 
-#define NODE_CNT 19
-#define CONS 7 //node h
-#define PROD 16 // node q
 
 
 Ptr<Node> from;
@@ -69,65 +53,17 @@ ns3::AnnotatedTopologyReader topologyReader("", 1);
 std::vector<NodeInfo> nbrTable(NODE_CNT);
 //NodeContainer nodeContainer;
 
-class Integer : public ns3::SimpleRefCount<Integer>
- {
- private:
-   int value_;
- public:
-   Integer (int value) {this->value_ = value;}
-
-   operator int () const { return value_; }
- };
-
- std::ostream &
- operator << (std::ostream &os, const ::Integer &i)
- {
-   os << (int)i;
-   return os;
- }
-
- /*
-typedef ndn::ndnSIM::trie_with_policy <
-    ndn::Name,
-    ndn::ndnSIM::smart_pointer_payload_traits<ndn::Name>,
-	ndn::ndnSIM::counting_policy_traits
-    > trietemp;
-*/
 ndn::ndnSIM::trie_with_policy< ndn::Name,
 					ndn::ndnSIM::smart_pointer_payload_traits<ndn::detail::RegisteredPrefixEntry>,
 					ndn::ndnSIM::counting_policy_traits> prefixTrie;
 
-typedef ndn::ndnSIM::trie_with_policy< Name,
-                                    ndnSIM::smart_pointer_payload_traits<ndn::detail::RegisteredPrefixEntry>,
-                                    ndnSIM::counting_policy_traits > super;
+std::vector<Ptr<ndn::Name> > prefix;
 
 
-std::string prefixNamesArr[] = {
-		"/0/2/1",		//a
-		"/0/1/1/1", 	//b
-		"/0/2",			//c
-		"/0/3/1",		//d
-		"/0/2/1/1",		//e
-		"/0/1/1",		//f
-		"/0/1/1/1/1",	//g
-		"/0/1/1/1/2",	//h
-		"/0/1",			//i
-		"/0",			//j
-		"/0/3",			//k
-		"/0/20/1",		//l
-		"/0/3/1/1",		//m
-		"/0/2/1/1/2",	//n
-		"/0/2/1/1/1",	//o
-		"/0/3/1/2",		//p
-		"/0/3/1/1/1",	//q
-		"/0/2/1/1/2/1",	//r
-		"/0/3/1/2/1" // s
-};
 
 void
 fill_names() {
 	std::vector<std::string>::const_iterator namesIter;
-	std::vector<Ptr<ndn::Name> > prefix;
 	int i = 0;
 
 	for (i = 0; i < NODE_CNT; i++) {
@@ -136,11 +72,12 @@ fill_names() {
 		names.push_back(prefixNamesArr[i]);
 		prefixTrie.insert(*(prefix[i]), Create < ndn::detail::RegisteredPrefixEntry > (prefix[i]));
 	}
+	// Test
 	super::iterator item = prefixTrie.find_exact(*(prefix[4]));
-	cout << "Prefix found" << *((item->payload ())->GetPrefix()) << endl;
+	//cout << "Prefix found" << *((item->payload ())->GetPrefix()) << endl;
 	ndn::Name n1("/0/2/1/1/3");
 	item = prefixTrie.longest_prefix_match(n1);
-	cout << "Longest Prefix found" << *((item->payload ())->GetPrefix()) << endl;
+	//cout << "Longest Prefix found" << *((item->payload ())->GetPrefix()) << endl;
 }
 
 void
@@ -183,20 +120,22 @@ fill_nbr_table() {
 		fromName = (*linkiter).GetFromNodeName();
 		to = (*linkiter).GetToNode();
 		toName = (*linkiter).GetToNodeName();
-		std::cout << "Pri : " << fromName << " -> " << toName << " : " << to->GetId() << "\n";
+		//std::cout << "Pri : " << fromName << " -> " << toName << " : " << to->GetId() << "\n";
 		pos = from->GetId();
 		nbrTable[pos].node = from;
 		nbrTable[pos].nodeName = fromName;
-		nbrTable[pos].prefixName = names[pos];
+		nbrTable[pos].prefixStr = names[pos];
+		nbrTable[pos].prefixName = prefix[pos];
 		nbrTable[pos].oneHopList.push_back(to);
-		std::cout << "Pri : " << toName << " -> " << fromName << " : " << from->GetId() << "\n";
+		//std::cout << "Pri : " << toName << " -> " << fromName << " : " << from->GetId() << "\n";
 		pos = to->GetId();
 		nbrTable[pos].node = to;
 		nbrTable[pos].nodeName = toName;
-		nbrTable[pos].prefixName = names[pos];
+		nbrTable[pos].prefixStr = names[pos];
+		nbrTable[pos].prefixName = prefix[pos];
 		nbrTable[pos].oneHopList.push_back(from);
 	}
-	std::cout << std::endl;
+	//std::cout << std::endl;
 	fill_twoHopNbrInfo();
 }
 
@@ -210,7 +149,7 @@ print_nbr_table() {
 	std::list<NodeInfo *>::const_iterator twoHopListIter;
 	Ptr<Node> oneHopNbr;
 	Ptr<Node> twoHopNbr;
-	std::string prefixName;
+	std::string prefixStr;
 	std::string sourceName;
 	std::string oneHopNbrName;
 	std::string twoHopNbrName;
@@ -219,7 +158,7 @@ print_nbr_table() {
 
 	for(i = 0; i != NODE_CNT; i++ ) {
 		sourceName = nbrTable[i].nodeName;
-		prefixName = nbrTable[i].prefixName;
+		prefixStr = nbrTable[i].prefixStr;
 		oneHopNodeInfoList = nbrTable[i].oneHopNodeInfoList;
 		for(oneHopInfoListIter = oneHopNodeInfoList.begin() ; oneHopInfoListIter != oneHopNodeInfoList.end() ; oneHopInfoListIter++ ) {
 			oneHopNbr = (*oneHopInfoListIter)->node;
@@ -227,41 +166,7 @@ print_nbr_table() {
 			twoHopList = (*oneHopInfoListIter)->oneHopNodeInfoList;
 			for (twoHopListIter = twoHopList.begin(); twoHopListIter != twoHopList.end(); twoHopListIter++) {
 				twoHopNbrName = (*twoHopListIter)->nodeName;
-				std::cout << "Pri " << sourceName << " " << prefixName << " -> " <<oneHopNbrName << " -> " << twoHopNbrName <<"\n";
-			}
-		}
-	}
-}
-
-void
-calculate_next_hops(void) {
-	std::list<NodeInfo * > oneHopNodeInfoList;
-	std::list<NodeInfo *>::const_iterator oneHopInfoListIter;
-	std::list<Ptr<Node> > oneHopList;
-	std::list<Ptr<Node> >::const_iterator oneHopListIter;
-	std::list<NodeInfo *> twoHopList;
-	std::list<NodeInfo *>::const_iterator twoHopListIter;
-	Ptr<Node> oneHopNbr;
-	Ptr<Node> twoHopNbr;
-	std::string prefixName;
-	std::string sourceName;
-	std::string oneHopNbrName;
-	std::string twoHopNbrName;
-	int i;
-
-
-	for(i = 0; i != NODE_CNT; i++ ) {
-		sourceName = nbrTable[i].nodeName;
-		prefixName = nbrTable[i].prefixName;
-		oneHopNodeInfoList = nbrTable[i].oneHopNodeInfoList;
-		for(oneHopInfoListIter = oneHopNodeInfoList.begin() ; oneHopInfoListIter != oneHopNodeInfoList.end() ; oneHopInfoListIter++ ) {
-			oneHopNbr = (*oneHopInfoListIter)->node;
-			oneHopNbrName = (*oneHopInfoListIter)->nodeName;
-			twoHopList = (*oneHopInfoListIter)->oneHopNodeInfoList;
-			for (twoHopListIter = twoHopList.begin(); twoHopListIter != twoHopList.end(); twoHopListIter++) {
-				twoHopNbrName = (*twoHopListIter)->nodeName;
-				std::cout << "Pri " << sourceName << " " << prefixName << " -> " <<oneHopNbrName << " -> " << twoHopNbrName <<"\n";
-
+				//std::cout << "Pri " << sourceName << " " << prefixStr << " -> " <<oneHopNbrName << " -> " << twoHopNbrName <<"\n";
 			}
 		}
 	}
@@ -315,6 +220,145 @@ CalculateRoutes () {
 }
 	*/
 
+void
+fill_nbrTableTrie() {
+	std::list<NodeInfo * > oneHopNodeInfoList;
+	std::list<NodeInfo *>::const_iterator oneHopInfoListIter;
+	std::list<NodeInfo *>::const_iterator oneHopInfoListIter1;
+	std::list<Ptr<Node> > oneHopList;
+	std::list<NodeInfo *>::reverse_iterator reviter;
+	std::list<Ptr<Node> >::const_iterator oneHopListIter;
+	std::list<NodeInfo *> twoHopList;
+	std::list<NodeInfo *>::const_iterator twoHopListIter;
+	std::list<NodeInfo *>::const_iterator twoHopListIter1;
+	Ptr<Node> oneHopNbr;
+	Ptr<Node> twoHopNbr;
+	std::string prefixStr;
+	std::string sourceName;
+	std::string oneHopNbrName;
+	std::string oneHopNbrPrefix;
+	std::string twoHopNbrStr;
+	std::string twoHopNbrPreStr;
+	ndn::Name foundPrefStr;
+	Ptr<ndn::Name> twoHopNbrName;
+	std::vector<std::string>::const_iterator namesIter;
+	int i = 0;
+	std::vector<Ptr<ndn::Name> > tmpPrefix;
+	super::iterator item;
+	std::string destPrefix = nbrTable[DEST].prefixStr;
+	Ptr<ndn::Name> destPrefixName = nbrTable[DEST].prefixName;
+	Ptr<Node> nextHop;
+	int found = 0;
+	cout<< "Prefix " << destPrefix << endl;
+
+
+	for(i = 0; i != NODE_CNT; i++ ) {
+		found = 0;
+		sourceName = nbrTable[i].nodeName;
+		prefixStr = nbrTable[i].prefixStr;
+		cout << "Sourcename " << sourceName << "\n";
+
+		oneHopNodeInfoList = nbrTable[i].oneHopNodeInfoList;
+		// If source is the dest then break
+		if(prefixStr == destPrefix) {
+			cout << "Current node " << sourceName << " is the dest \n";
+			found = 1;
+			nextHop = 0;
+			continue;
+		}
+
+		ndn::ndnSIM::trie_with_policy< ndn::Name,
+											ndn::ndnSIM::smart_pointer_payload_traits<ndn::detail::RegisteredPrefixEntry>,
+											ndn::ndnSIM::counting_policy_traits > tmpTrie;
+
+		for(oneHopInfoListIter = oneHopNodeInfoList.begin() ; oneHopInfoListIter != oneHopNodeInfoList.end() ; oneHopInfoListIter++ ) {
+			oneHopNbr = (*oneHopInfoListIter)->node;
+			oneHopNbrName = (*oneHopInfoListIter)->nodeName;
+			oneHopNbrPrefix = (*oneHopInfoListIter)->prefixStr;
+			cout << "\t" <<"1HopNbr " << oneHopNbrName << "\n";
+			twoHopList = (*oneHopInfoListIter)->oneHopNodeInfoList;
+			// If one hop nbr is the dest then break
+			if(oneHopNbrPrefix == destPrefix) {
+				cout << "Next hop " << oneHopNbrName << " is the dest \n";
+				found = 1;
+				nextHop = oneHopNbr;
+				break;
+			}
+			for (twoHopListIter = twoHopList.begin(); twoHopListIter != twoHopList.end(); twoHopListIter++) {
+				twoHopNbrName = (*twoHopListIter)->prefixName;
+				twoHopNbrPreStr = (*twoHopListIter)->prefixStr;
+				twoHopNbrStr = (*twoHopListIter)->nodeName;
+				// If two hop nbr is the source then continue
+				if(prefixStr == twoHopNbrPreStr) {
+					cout << "The two hop nbr " << twoHopNbrStr << " and the source are the same \n";
+					continue;
+				}
+				cout << "\t\t" << "2HopNbr " << twoHopNbrStr << " : " << twoHopNbrPreStr << "\n";
+				tmpTrie.insert((*twoHopNbrName), Create < ndn::detail::RegisteredPrefixEntry > (twoHopNbrName));
+				nbrTable[i].nbrTrie = &tmpTrie;
+			}
+		}
+		if (found != 1) {
+			item = (tmpTrie).longest_prefix_match(*(destPrefixName));
+			if (item != 0) {
+				foundPrefStr = *((item->payload ())->GetPrefix());
+				cout << "Longest Prefix found" << foundPrefStr << endl;
+			}
+			for(oneHopInfoListIter1 = oneHopNodeInfoList.begin() ; oneHopInfoListIter1 != oneHopNodeInfoList.end() ; oneHopInfoListIter1++ ) {
+				for (twoHopListIter1 = twoHopList.begin(); twoHopListIter1 != twoHopList.end(); twoHopListIter1++) {
+
+				}
+			}
+		}
+		cout << "\n-------------------------------------------------\n";
+	}
+}
+
+void
+calculate_next_hops(void) {
+	std::list<NodeInfo * > oneHopNodeInfoList;
+	std::list<NodeInfo *>::const_iterator oneHopInfoListIter;
+	std::list<Ptr<Node> > oneHopList;
+	std::list<Ptr<Node> >::const_iterator oneHopListIter;
+	std::list<NodeInfo *> twoHopList;
+	std::list<NodeInfo *>::const_iterator twoHopListIter;
+	Ptr<Node> oneHopNbr;
+	Ptr<Node> twoHopNbr;
+	std::string prefixStr;
+	std::string sourceName;
+	std::string oneHopNbrName;
+	std::string twoHopNbrName;
+	Ptr<ndn::Name> dstPrefixName;
+	std::string dstPrefixStr;
+	int i;
+	super::iterator item;
+	//ndn::ndnSIM::trie_with_policy< ndn::Name,
+	//									ndn::ndnSIM::smart_pointer_payload_traits<ndn::detail::RegisteredPrefixEntry>,
+	//									ndn::ndnSIM::counting_policy_traits > nbrTrie;
+
+
+	for(i = 0; i < NODE_CNT; i++ ) {
+		sourceName = nbrTable[i].nodeName;
+		dstPrefixName = nbrTable[3].prefixName;
+		dstPrefixStr = nbrTable[PROD].prefixStr;
+		prefixStr = nbrTable[i].prefixStr;
+
+		//item = (*(nbrTable[6].nbrTrie)).longest_prefix_match(*dstPrefixName);
+		//cout << "Longest Prefix found" << *((item->payload ())->GetPrefix()) << endl;
+		oneHopNodeInfoList = nbrTable[i].oneHopNodeInfoList;
+		for(oneHopInfoListIter = oneHopNodeInfoList.begin() ; oneHopInfoListIter != oneHopNodeInfoList.end() ; oneHopInfoListIter++ ) {
+			oneHopNbr = (*oneHopInfoListIter)->node;
+			oneHopNbrName = (*oneHopInfoListIter)->nodeName;
+			twoHopList = (*oneHopInfoListIter)->oneHopNodeInfoList;
+			for (twoHopListIter = twoHopList.begin(); twoHopListIter != twoHopList.end(); twoHopListIter++) {
+				twoHopNbrName = (*twoHopListIter)->nodeName;
+				//std::cout << "Pri " << sourceName << " " << prefixStr << " -> " <<oneHopNbrName << " -> " << twoHopNbrName <<"\n";
+			}
+		}
+	}
+}
+
+
 
 int
 main (int argc, char *argv[])
@@ -365,6 +409,9 @@ main (int argc, char *argv[])
   producerHelper.SetPrefix (prefixstr);
   producerHelper.SetAttribute ("PayloadSize", StringValue("1024"));
   producerHelper.Install (producer);
+
+  fill_nbrTableTrie();
+  //calculate_next_hops();
 
   // Add /prefix origins to ndn::GlobalRouter
   ndnGlobalRoutingHelper.AddOrigins (prefixstr, producer);

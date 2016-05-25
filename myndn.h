@@ -83,4 +83,9 @@ std::string prefixNamesArr[] = {
 #define PROD 3 // node q
 #define DEST PROD
 
+
+void
+add_path(unsigned firstNode,unsigned SecndNode, int metric, const string str);
+
+
 #endif /* SCRATCH_MYNDN_H_ */

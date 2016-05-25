@@ -427,31 +427,6 @@ add_fib_entries () {
 		}
 	}
 }
-*/
-void
-add_fib_entries (void) {
-	int i;
-	int j;
-	Ptr<ndn::L3Protocol> ndnProt;
-	Ptr<ndn::Face> nextFace = 0;
-	std::list<TopologyReader::Link> links;
-	links = topologyReader.GetLinks();
-	std::list<TopologyReader::Link>::iterator linkiter;
-	Ptr<Node> srcNode;
-	Ptr<Node> nextHopNode;
-
-
-	std::string fromName;
-	std::string toName;
-	std::string nextHopName;
-	std::string srcName;
-	Ptr<ndn::GlobalRouter> source;
-
-	for (i = 0; i < NODE_CNT; i++) {
-
-		srcNode = nbrTable[i].node;
-		srcName = nbrTable[i].nodeName;
-		nextHopNode = nbrTable[i].nextHopNode;
 		for (j = 0; j < NODE_CNT; j++) {
 			if (nextHopNode == nbrTable[j].node) {
 				nextHopName = nbrTable[j].nodeName;
@@ -470,22 +445,70 @@ add_fib_entries (void) {
 			fromName = (*linkiter).GetFromNodeName();
 			toName = (*linkiter).GetToNodeName();
 			if (fromName == srcName && toName == nextHopName) {
-				nextFace = ndnProt->GetFaceByNetDevice ((*linkiter).GetToNetDevice ());
+				nextFace = ndnProt->GetFaceByNetDevice ((*linkiter).GetFromNetDevice ());
 				break;
 			}
 			if (toName == srcName && fromName == nextHopName) {
-				nextFace = ndnProt->GetFaceByNetDevice ((*linkiter).GetFromNetDevice ());
+				nextFace = ndnProt->GetFaceByNetDevice ((*linkiter).GetToNetDevice ());
 				break;
 			}
 		}
 
 		// Add Fib Entry
 		Ptr<ndn::Fib>  fib  = source->GetObject<ndn::Fib> ();
-		if (nextFace != 0)
+		if (nextFace != 0) {
 			Ptr<ndn::fib::Entry> entry = fib->Add (interestPrefixstr, nextFace, 1);
+
+		}
+	}
+}
+*/
+void
+add_fib_entries (void) {
+	int i;
+	Ptr<ndn::L3Protocol> ndnProt;
+	Ptr<ndn::Face> nextFace = 0;
+	std::list<TopologyReader::Link> links;
+	links = topologyReader.GetLinks();
+	std::list<TopologyReader::Link>::iterator linkiter;
+	Ptr<Node> srcNode;
+	Ptr<Node> nextHopNode;
+
+
+	std::string fromName;
+	std::string toName;
+	std::string nextHopName;
+	std::string srcName;
+	Ptr<ndn::GlobalRouter> source;
+
+	for (i = 0; i < NODE_CNT; i++) {
+
+		srcNode = nbrTable[i].node;
+		nextHopNode = nbrTable[i].nextHopNode;
+		add_path(srcNode->GetId(), nextHopNode->GetId(), 1, interestPrefixstr);
 	}
 }
 
+void
+add_path(unsigned firstNode,unsigned SecndNode, int metric, string str){
+	Ptr<Node> node1=NodeList::GetNode(firstNode);
+	Ptr<Fib>  fib  = node1->GetObject<Fib> ();
+	unsigned m, k;
+	for(m=0; m<node1->GetNDevices(); m++){
+		Ptr<Channel> ch=node1->GetDevice(m)->GetChannel();
+		for(k=0; k<ch->GetNDevices(); k++){
+			if(ch->GetDevice(k)->GetNode()->GetId()==SecndNode){
+				//Ptr<Ipv4> stack = node->GetObject<Ipv4> ();
+				Ptr<ndn::L3Protocol> l3 = node1->GetObject<ndn::L3Protocol> ();
+		       // str="prefix1";
+				Ptr<Name> name = Create<Name>(str);
+				//Sname->append(str);
+				const Ptr<const Name> &prefix=name;
+				Ptr<fib::Entry> entry = fib->Add (prefix, l3->GetFace(m), metric );
+			}
+		}
+	}
+}
 
 int
 main (int argc, char *argv[])
@@ -508,7 +531,7 @@ main (int argc, char *argv[])
 
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
-  ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::LabelRoute");
+  ndnHelper.SetForwardingStrategy ("ns3::ndn::fw::BestRoute");
   ndnHelper.InstallAll ();
   
   // Installing global routing interface on all nodes

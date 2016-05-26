@@ -79,8 +79,8 @@ std::string prefixNamesArr[] = {
 };
 
 #define NODE_CNT 18
-#define CONS 7 //node h
-#define PROD 3 // node q
+#define CONS 8 //node h
+#define PROD 17 // node q
 #define DEST PROD
 
 

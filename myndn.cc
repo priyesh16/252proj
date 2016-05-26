@@ -172,53 +172,6 @@ print_nbr_table() {
 	}
 }
 
-
-/*
-void
-CalculateRoutes () {
-	std::vector<Ptr<Node> >::iterator nodeIter;
-	std::vector<std::string>::const_iterator namesIter;
-	NodeContainer nodeContainer = NodeContainer::GetGlobal();
-	std::list<TopologyReader::Link> links;
-	links = topologyReader.GetLinks();
-	std::list<TopologyReader::Link>::iterator linkiter;
-	std::string fromName = "";
-	std::string toName = "";
-	int pos;
-	Ptr<ndn::L3Protocol> ndnFromProt;
-	Ptr<ndn::Face> fromFace;
-	Ptr<ndn::L3Protocol> ndnToProt;
-	Ptr<ndn::Face> toFace;
-
-	for(linkiter = links.begin() ; linkiter != links.end() ; linkiter++ ) {
-		ndnFromProt = (*linkiter).GetFromNode ()->GetObject<ndn::L3Protocol> ();
-		if (ndnFromProt != 0)
-	        fromFace = ndnFromProt->GetFaceByNetDevice ((*linkiter).GetFromNetDevice ());
-		ndnToProt = (*linkiter).GetToNode ()->GetObject<ndn::L3Protocol> ();
-		if (ndnToProt != 0)
-	        toFace = ndnToProt->GetFaceByNetDevice ((*linkiter).GetToNetDevice ());
-
-
-
-	for (NodeList::Iterator node = NodeList::Begin (); node != NodeList::End (); node++) {
-		Ptr<GlobalRouter> source = (*node)->GetObject<GlobalRouter> ();
-		if (source == 0)
-			continue;
-
-			Ptr<ndn::Fib>  fib  = source->GetObject<ndn::Fib> ();
-			NS_LOG_DEBUG (" prefix " << prefix << " reachable via face " << *i->second.get<0> ()
-            << " with distance " << i->second.get<1> ()
-            << " with delay " << i->second.get<2> ());
-			Ptr<ndn::fib::Entry> entry = fib->Add (prefix, i->second.get<0> (), i->second.get<1> ());
-			entry->SetRealDelayToProducer (i->second.get<0> (), Seconds (i->second.get<2> ()));
-			Ptr<Limits> faceLimits = i->second.get<0> ()->GetObject<Limits> ();
-			Ptr<Limits> fibLimits = entry->GetObject<Limits> ();
-			if (fibLimits != 0)
-				fibLimits->SetLimits (faceLimits->GetMaxRate (), 2 * i->second.get<2> () );
-		}
-	}
-}
-*/
 void
 print_name(ndn::Name &namePrefix) {
 	ndn::Name::const_iterator i;
@@ -261,8 +214,8 @@ fill_next_hops() {
 	Ptr<Node> nextHop;
 	int found = 0;
 	Ptr<ndn::Name> srcPrefixName;
-	cout<< "Prefix " << destPrefix << endl;
-
+	cout<< "Destination Prefix is" << destPrefix << endl;
+	cout << "\n-------------------------------------------------\n";
 
 	for(i = 0; i != NODE_CNT; i++ ) {
 		found = 0;
@@ -293,7 +246,7 @@ fill_next_hops() {
 			twoHopList = (*oneHopInfoListIter)->oneHopNodeInfoList;
 			// If one hop nbr is the dest then break
 			if(oneHopNbrPrefix == destPrefix) {
-				cout << "\tNext hop " << oneHopNbrName << " is the dest \n";
+				cout << "Next hop is " << oneHopNbrName << " (which is also the dest) \n";
 				found = 1;
 				nextHop = oneHopNbr;
 				nbrTable[i].nextHopNode = oneHopNbr;
@@ -305,7 +258,7 @@ fill_next_hops() {
 				twoHopNbrStr = (*twoHopListIter)->nodeName;
 				// If two hop nbr is the source then continue
 				if(prefixStr == twoHopNbrPreStr) {
-					cout << "\t\tThe two hop nbr " << twoHopNbrStr << " and the source are the same \n";
+					//cout << "\t\tThe two hop Nbr " << twoHopNbrStr << " and the source are the same \n";
 					continue;
 				}
 				cout << "\t\t" << "2HopNbr " << twoHopNbrStr << " : " << twoHopNbrPreStr << "\n";
@@ -317,20 +270,20 @@ fill_next_hops() {
 			item = (tmpTrie).longest_prefix_match(*(destPrefixName));
 			// If no prefix match with destination then parent node is the nbr
 			if (item == 0) {
-				cout << "The original prefix" << srcPrefixName <<"\t" << i;
+				//cout << "The original prefix" << srcPrefixName <<"\t" << i;
 				//print_name(*srcPrefixName);
 				item = (tmpTrie).longest_prefix_match(*srcPrefixName);
 			}
 			// if item is still 0 then ideally assert
 			//if (item != 0) {
 				foundPrefStr = *((item->payload ())->GetPrefix());
-				cout << "Longest Prefix found" << foundPrefStr << endl;
+				cout << "Longest Prefix found is" << foundPrefStr << endl;
 				oneHopNodeInfoList1 = nbrTable[i].oneHopNodeInfoList;
 				for(oneHopInfoListIter1 = oneHopNodeInfoList1.begin() ; oneHopInfoListIter1 != oneHopNodeInfoList1.end() ; oneHopInfoListIter1++ ) {
 					twoHopList1 = (*oneHopInfoListIter1)->oneHopNodeInfoList;
 					for (twoHopListIter1 = twoHopList1.begin(); twoHopListIter1 != twoHopList1.end(); twoHopListIter1++) {
 						if ((*twoHopListIter1)->prefixName->compare(foundPrefStr) == 0) {
-								cout << "Nbr is " << (*oneHopInfoListIter1)->nodeName << endl;
+								cout << "Next hop is " << (*oneHopInfoListIter1)->nodeName << endl;
 								nbrTable[i].nextHopNode = (*oneHopInfoListIter1)->node;
 								found = 1;
 								break;
@@ -343,126 +296,9 @@ fill_next_hops() {
 		}
 		cout << "\n-------------------------------------------------\n";
 	}
+	cout << "\n-------------------------------------------------\n\n\n";
 }
-/*
-void
-push_fib_entries(void) {
-	std::list<NodeInfo * > oneHopNodeInfoList;
-	std::list<NodeInfo *>::const_iterator oneHopInfoListIter;
-	std::list<Ptr<Node> > oneHopList;
-	std::list<Ptr<Node> >::const_iterator oneHopListIter;
-	std::list<NodeInfo *> twoHopList;
-	std::list<NodeInfo *>::const_iterator twoHopListIter;
-	Ptr<Node> oneHopNbr;
-	Ptr<Node> twoHopNbr;
-	std::string prefixStr;
-	std::string sourceName;
-	std::string oneHopNbrName;
-	std::string twoHopNbrName;
-	Ptr<ndn::Name> dstPrefixName;
-	std::string dstPrefixStr;
-	int i;
 
-	for(i = 0; i < NODE_CNT; i++ ) {
-		sourceName = nbrTable[i].nodeName;
-		dstPrefixName = nbrTable[3].prefixName;
-		dstPrefixStr = nbrTable[PROD].prefixStr;
-		prefixStr = nbrTable[i].prefixStr;
-
-		//item = (*(nbrTable[6].nbrTrie)).longest_prefix_match(*dstPrefixName);
-		//cout << "Longest Prefix found" << *((item->payload ())->GetPrefix()) << endl;
-		oneHopNodeInfoList = nbrTable[i].oneHopNodeInfoList;
-		for(oneHopInfoListIter = oneHopNodeInfoList.begin() ; oneHopInfoListIter != oneHopNodeInfoList.end() ; oneHopInfoListIter++ ) {
-			oneHopNbr = (*oneHopInfoListIter)->node;
-			oneHopNbrName = (*oneHopInfoListIter)->nodeName;
-			twoHopList = (*oneHopInfoListIter)->oneHopNodeInfoList;
-			for (twoHopListIter = twoHopList.begin(); twoHopListIter != twoHopList.end(); twoHopListIter++) {
-				twoHopNbrName = (*twoHopListIter)->nodeName;
-				//std::cout << "Pri " << sourceName << " " << prefixStr << " -> " <<oneHopNbrName << " -> " << twoHopNbrName <<"\n";
-			}
-		}
-	}
-}
-void
-add_fib_entries () {
-
-	std::vector<Ptr<Node> >::iterator nodeIter;
-	std::vector<std::string>::const_iterator namesIter;
-	NodeContainer nodeContainer = NodeContainer::GetGlobal();
-	std::list<TopologyReader::Link> links;
-	links = topologyReader.GetLinks();
-	std::list<TopologyReader::Link>::iterator linkiter;
-	std::string fromName = "";
-	std::string toName = "";
-	int pos;
-	Ptr<ndn::L3Protocol> ndnFromProt;
-	Ptr<ndn::Face> fromFace;
-	Ptr<ndn::L3Protocol> ndnToProt;
-	Ptr<ndn::Face> toFace;
-	Ptr<Node> sourceNode;
-
-	for(linkiter = links.begin() ; linkiter != links.end() ; linkiter++ ) {
-		ndnFromProt = (*linkiter).GetFromNode ()->GetObject<ndn::L3Protocol> ();
-		if (ndnFromProt != 0)
-	        fromFace = ndnFromProt->GetFaceByNetDevice ((*linkiter).GetFromNetDevice ());
-		ndnToProt = (*linkiter).GetToNode ()->GetObject<ndn::L3Protocol> ();
-		if (ndnToProt != 0)
-	        toFace = ndnToProt->GetFaceByNetDevice ((*linkiter).GetToNetDevice ());
-
-	for (NodeList::Iterator node = NodeList::Begin (); node != NodeList::End (); node++) {
-		Ptr<GlobalRouter> source = (*node)->GetObject<GlobalRouter> ();
-		if (source == 0)
-			continue;
-
-			Ptr<ndn::Fib>  fib  = source->GetObject<ndn::Fib> ();
-			NS_LOG_DEBUG (" prefix " << prefix << " reachable via face " << *i->second.get<0> ()
-            << " with distance " << i->second.get<1> ()
-            << " with delay " << i->second.get<2> ());
-			Ptr<ndn::fib::Entry> entry = fib->Add (prefix, i->second.get<0> (), i->second.get<1> ());
-			entry->SetRealDelayToProducer (i->second.get<0> (), Seconds (i->second.get<2> ()));
-			Ptr<Limits> faceLimits = i->second.get<0> ()->GetObject<Limits> ();
-			Ptr<Limits> fibLimits = entry->GetObject<Limits> ();
-			if (fibLimits != 0)
-				fibLimits->SetLimits (faceLimits->GetMaxRate (), 2 * i->second.get<2> () );
-		}
-	}
-}
-		for (j = 0; j < NODE_CNT; j++) {
-			if (nextHopNode == nbrTable[j].node) {
-				nextHopName = nbrTable[j].nodeName;
-				break;
-			}
-		}
-		source = srcNode->GetObject<ndn::GlobalRouter> ();
-			if (source == 0)
-				continue;
-
-
-		ndnProt = srcNode->GetObject<ndn::L3Protocol> ();
-
-		// Find Face
-		for(linkiter = links.begin() ; linkiter != links.end() ; linkiter++ ) {
-			fromName = (*linkiter).GetFromNodeName();
-			toName = (*linkiter).GetToNodeName();
-			if (fromName == srcName && toName == nextHopName) {
-				nextFace = ndnProt->GetFaceByNetDevice ((*linkiter).GetFromNetDevice ());
-				break;
-			}
-			if (toName == srcName && fromName == nextHopName) {
-				nextFace = ndnProt->GetFaceByNetDevice ((*linkiter).GetToNetDevice ());
-				break;
-			}
-		}
-
-		// Add Fib Entry
-		Ptr<ndn::Fib>  fib  = source->GetObject<ndn::Fib> ();
-		if (nextFace != 0) {
-			Ptr<ndn::fib::Entry> entry = fib->Add (interestPrefixstr, nextFace, 1);
-
-		}
-	}
-}
-*/
 void
 add_fib_entries (void) {
 	int i;
@@ -558,7 +394,6 @@ main (int argc, char *argv[])
   producerHelper.Install (producer);
 
   fill_next_hops();
-  //calculate_next_hops();
 
   // Add /prefix origins to ndn::GlobalRouter
   ndnGlobalRoutingHelper.AddOrigins (interestPrefixstr, producer);
@@ -567,18 +402,8 @@ main (int argc, char *argv[])
   add_fib_entries();
   //ndn::GlobalRoutingHelper::CalculateRoutes ();
   ndn::L3Protocol::FaceList m_faces;
-  /*
-  int id;
-  std::cout << "face size" << m_faces.size() << "\n";
-  ndn::Fib::
 
-  for (int j = 0; j < 1; j++) {
-	 id = faceList[j]->GetNode()->GetId();
-	 std::cout << "id" << id << "\n";
-     //std::cout << "Pri : FaceList" << nbrTable[id].nodeName << "\n";
-  }
-*/
-  Simulator::Stop (Seconds (2.0));
+  Simulator::Stop (Seconds (1.0));
   ndn::AppDelayTracer::InstallAll("outfile.txt");
   Simulator::Run ();
   Simulator::Destroy ();

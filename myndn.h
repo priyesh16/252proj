@@ -68,7 +68,6 @@ std::string prefixNamesArr[] = {
 		"/0/1",			//i
 		"/0",			//j
 		"/0/3",			//k
-		"/0/20/1",		//l
 		"/0/3/1/1",		//m
 		"/0/2/1/1/2",	//n
 		"/0/2/1/1/1",	//o
@@ -79,8 +78,8 @@ std::string prefixNamesArr[] = {
 };
 
 #define NODE_CNT 18
-#define CONS 8 //node h
-#define PROD 17 // node q
+#define CONS 7 //node h
+#define PROD 15 // node q
 #define DEST PROD
 
 

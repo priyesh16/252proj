@@ -399,8 +399,8 @@ main (int argc, char *argv[])
   ndnGlobalRoutingHelper.AddOrigins (interestPrefixstr, producer);
 
   // Calculate and install FIBs
-  add_fib_entries();
-  //ndn::GlobalRoutingHelper::CalculateRoutes ();
+  //add_fib_entries();
+  ndn::GlobalRoutingHelper::CalculateRoutes ();
   ndn::L3Protocol::FaceList m_faces;
 
   Simulator::Stop (Seconds (1.0));
